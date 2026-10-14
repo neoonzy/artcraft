@@ -77,7 +77,9 @@ export class SaveManager {
       clearTimeout(this.saveTimer);
     }
     this.saveTimer = setTimeout(() => {
-      void this.saveNow();
+      void this.saveNow().catch((error: unknown) => {
+        console.error("Video project autosave failed:", error);
+      });
     }, this.debounceMs);
   }
 
@@ -94,11 +96,16 @@ export class SaveManager {
     this.hasPendingSave = false;
     this.clearTimer();
 
+    let saveFailed = false;
     try {
       await this.editor.project.saveCurrentProject();
+    } catch (error) {
+      saveFailed = true;
+      this.hasPendingSave = true;
+      throw error;
     } finally {
       this.isSaving = false;
-      if (this.hasPendingSave) {
+      if (this.hasPendingSave && !saveFailed) {
         this.queueSave();
       }
     }
